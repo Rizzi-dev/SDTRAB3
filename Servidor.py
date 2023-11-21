@@ -54,7 +54,6 @@ class Estoque:
         self.clients = {} 
         
     @Pyro5.api.expose
-    @Pyro5.api.oneway
     def register_user(self, nome, public_key, client_object):
         print(public_key)
         print("Usuarios cadastrados: ", self.users)
@@ -176,17 +175,58 @@ class Estoque:
 
             emEstoque = []
             for product in self.products.values():
-
                     product_info = {
-
                         "code": product.code,
                         "name": product.name,
                         "quantity": product.quantity
                     }
-
                     emEstoque.append(product_info)
-
             return emEstoque
+        
+        elif report_type == 'Fluxo de movimentação':
+            current_time = datetime.datetime.now()
+            time = current_time - datetime.timedelta(minutes=1)
+
+            fluxoMov = []
+            for product in self.products.values():
+              
+                    product_info = {
+                        "code": product.code,
+                        "name": product.name,
+                        "movements": []
+                    }
+
+                    # Filtrar os movimentos que ocorreram até 2 minutos atrás
+                    for movement_time, movement_type, movement_quantity in product.movements:
+                        if movement_time >= time:
+                            product_info["movements"].append({
+                                "time": movement_time,
+                                "type": movement_type,
+                                "quantity": movement_quantity
+                            })
+
+                    fluxoMov.append(product_info)
+            return fluxoMov
+                
+        elif report_type == 'Lista de produtos sem saída':
+                current_time = datetime.datetime.now()
+                two_minutes_ago = current_time - datetime.timedelta(minutes=1)
+
+                unsold_products = []
+
+                for product in self.products.values():
+                    has_exit_movements = any(
+                        movement_time >= two_minutes_ago and movement_type == "saída"
+                        for movement_time, movement_type, _ in product.movements
+                    )
+
+                    if not has_exit_movements:
+                        unsold_products.append({
+                            "code": product.code,
+                            "name": product.name
+                        })
+
+        return unsold_products
                 
 
 
@@ -200,26 +240,16 @@ class Estoque:
     def check_unsold_products(self):
 
         recent_product_movements = self.generate_stock_report("Fluxo de movimentação")
-
         print(recent_product_movements)
 
-
         for product in self.products.values():
-
             counter = 0
-
             for info in product.movements:
-
                 print(info[1])
-
                 if info[1] == "saída":
-
                     counter += 1
-        
             if counter == 0:
-
-                self.notify_unsold_products(product)
-
+                self.promocao(product)
 
     @Pyro5.api.expose 
     def reposicao(self, product):
@@ -232,7 +262,7 @@ class Estoque:
        
     @Pyro5.api.expose
     def promocao(self, product):
-        for user_name, user_object in self.users.items():
+        for user_object in self.users.items():
             print(f"o produto {product.name} não está sendo vendido")
             aux_object = Pyro5.api.Proxy(user_object.client_object)
             aux_object.notify_unsold_products(product.code)
@@ -264,6 +294,6 @@ if __name__ == "__main__":
 
     print("o servidor esta pronto")
 
-    check_stock_thread = threading.Thread(args=(stock_system, )).start()
+    check_stock_thread = threading.Thread(target=periodic_check, args=(stock_system, )).start()
 
     daemon.requestLoop()
