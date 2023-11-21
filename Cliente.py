@@ -87,16 +87,11 @@ if __name__ == "__main__":
     print("SEJA BEM VINDO AO SISTEMA DE ESTOQUE! ")
     print("LOGIN DE USUÁRIO: ")
     nome = input("NOME: ")
-    #response = server.register_user(nome, public_key, uri)
-    #print(response)
-    server.register_user(nome, public_key, uri)
+    response = server.register_user(nome, public_key, uri)
+    print(response)
 
-    
-    #threading.Thread(target=daemon.loopThread).start
+    threading.Thread(target=daemon.requestLoop).start
 
-    thread = threading.Thread(target=daemon.requestLoop, args=(daemon, ))
-    thread.daemon = True
-    thread.start()
 
     message = nome
     signature = sign_message(message, pk)
@@ -134,17 +129,31 @@ if __name__ == "__main__":
 
 
         elif(answer['action'] == 'RELATÓRIO'):
-                
                 print('Relatorio')
                 questions2 = [
-                inquirer.List('action2', message="QUAL RELATÓRIO DESEJA EMITIR", 
-                            choices=['PRODUTOS EM ESTOQUE'])
+                inquirer.List('action2', message="Qual acao deseja tomar?", 
+                            choices=['Produtos em estoque', 'Fluxo de movimentação', 'Lista de produtos sem saída'])
 
                 ]
                 answer = inquirer.prompt(questions2)
-                if(answer['action2']== 'PRODUTOS EM ESTOQUE'):  
-                    print('PRODUTOS EM ESTOQUE')
+                if(answer['action2']== 'Produtos em estoque'):
+                    print('Produtos em estoque')
                     produtosEmEstoque= server.generate_stock_report('PRODUTOS EM ESTOQUE')
                     for product in produtosEmEstoque:
-                        print(f"Produto {product['name']} {product['quantity']} em estoque")
+                        print(f"Produto {product['name']} - ({product['code']}) {product['quantity']} unidades em estoque")
+
+                elif(answer['action2']== 'Fluxo de movimentação'):
+                        print('Fluxo de movimentação')
+                        fluxoMov= server.generate_stock_report('Fluxo de movimentação')
+                        print("Movimentos:")
+                        for product in fluxoMov:
+                            for movement in product['movements']:
+                                print(f"Produto {product['name']} - ({product['code']})  - Tipo: {movement['type']}, Quantidade: {movement['quantity']}, Hora: {movement['time']}")
+
+                elif(answer['action2']== 'Lista de produtos sem saída'):
+                        print('Lista de produtos sem saída')
+                        prodSemSaida = server.generate_stock_report('Lista de produtos sem saída')
+                        for product in prodSemSaida :
+                            print(f"Produto {product['name']} ({product['code']}) não teve movimentos de saída até 2 minutos atrás.")
+
     
