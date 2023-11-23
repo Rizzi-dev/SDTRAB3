@@ -222,22 +222,23 @@ class Estoque:
             if counter == 0:
                 self.notify_unsold_products(product)
 
-
     @Pyro5.api.expose 
     def notify_replenishment(self, product):
         print(self.users)
 
-        for user_object in self.users.items():
+        for user_name, user_object in self.users.items():
             print(f"o produto {product.name} está fora de estoque e precisa de reposicao")
             aux_object = Pyro5.api.Proxy(user_object.client_object)
             aux_object.notify_replenishment(product.code)
        
     @Pyro5.api.expose
     def notify_unsold_products(self, product):
-        for user_object in self.users.items():
+        for user_name, user_object in self.users.items():
             print(f"o produto {product.name} não está sendo vendido")
             aux_object = Pyro5.api.Proxy(user_object.client_object)
             aux_object.notify_unsold_products(product.code)
+
+
 
 
     def __reduce__(self):
