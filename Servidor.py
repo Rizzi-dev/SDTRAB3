@@ -236,7 +236,7 @@ class Estoque:
         for user_name, user_object in self.users.items():
             print(f"o produto {product.name} não está sendo vendido")
             aux_object = Pyro5.api.Proxy(user_object.client_object)
-            aux_object.notify_unsold_products(product.code)
+            aux_object.notify_unsold_products(product)
 
 
 
@@ -249,20 +249,16 @@ def periodic_check(stock_system):
     while True:
         stock_system.check_low_stock()
         stock_system.check_unsold_products()
-        sleep(30)
+        sleep(5)
 
 
 # Configurar o servidor PyRO
-if __name__ == "__main__":
-    daemon = Pyro5.api.Daemon()
-    ns = Pyro5.api.locate_ns()
 
-    stock_system = Estoque()
-    uri = daemon.register(stock_system)
-    ns.register("estoque", uri)
-    print("Servidor PyRO pronto.")
-
-
-    check_stock_thread = threading.Thread(target=periodic_check, args=(stock_system, )).start()
-
-    daemon.requestLoop()
+daemon = Pyro5.api.Daemon()
+ns = Pyro5.api.locate_ns()
+stock_system = Estoque()
+uri = daemon.register(stock_system)
+ns.register("estoque", uri)
+print("Servidor PyRO pronto.")
+check_stock_thread = threading.Thread(target=periodic_check, args=(stock_system, )).start()
+daemon.requestLoop()
